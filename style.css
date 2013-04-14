@@ -1,0 +1,113 @@
+html {
+	padding: 0 1em;
+}
+
+body {
+	margin: 0 auto;
+	max-width: 800px;
+	font-family: Cambria, Palatino Linotype, Palatino, Liberation Serif, serif;
+	font-size: 17px;
+	line-height: 135%;
+	color: #333;
+}
+
+h1 { font-size: 120%; margin-bottom: 1em; line-height: normal; }
+h2 { font-size: 115%; margin-bottom: 1em; }
+h3 { font-size: 107%; margin-bottom: 1em; }
+h4 { font-size: 100%; margin-bottom: 1em; }
+
+h1 span.secnum, h2 span.secnum, h3 span.secnum, h4 span.secnum {
+	width: 6em;
+	margin-left: -6.8em;
+	text-align: right;
+	float: left;
+}
+
+sup, sub {
+	font-size: smaller;
+	vertical-align: baseline;
+	position: relative;
+}
+
+pre {
+	margin-left: 2em;
+	font-size: 90%;
+}
+
+:link {
+	text-decoration: none;
+	color: #3333bb;
+}
+:link:hover {
+	text-decoration: underline;
+	color: blue;
+}
+:link b, :link code {
+	color: #5555bb;
+}
+:link:hover b, :link:hover code {
+	color: #0000ee;
+}
+:link:visited b, :link:visited code {
+	color: inherit;
+}
+span.secnum a:link, span.secnum a:visited {
+	color: inherit;
+}
+h1:hover span.secnum a:link, h1:hover span.secnum a:visited {
+	color:#5555bb;
+	text-decoration: underline;
+}
+
+em { font-style: italic; }
+dfn { font-style: italic; }
+
+/* Front matter */
+ol.toc { padding-left: 0; }
+ol.toc > li { list-style-type: none; padding-left: 1em; text-indent: -1em;}
+ol.toc > li span.secnum {
+	float: none;
+}
+
+/* Notes */
+div.note {
+	margin: 1em 0 1em 4em;
+}
+span.nh {
+	float: left;
+	width: 4em;
+	margin-left: -4em;
+}
+
+/* Grammar definitions */
+div.gp {
+	margin-left: 2.4em;
+	margin-top: 0.9em;
+}
+div.rhs { /* right-hand side */
+	margin-left: 2.4em;
+} 
+code { /* including code.t, meaning "terminal" or "token" */
+	font-weight: bold;
+	color: #555555;
+}
+span.nt { /* nonterminal */
+	font-family: Times New Roman, Times, FreeSerif, serif;
+	font-style: italic;
+}
+span.geq { /* grammar equal-sign, like "::" */
+	font-weight: bold;
+}
+
+ul > li {
+	list-style-type: disc;
+}
+ol.lower-alpha > li {
+	list-style-type: lower-alpha;
+}
+
+span.pagenumber {
+	position: absolute;
+	right: 0;
+}
+

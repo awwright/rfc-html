@@ -1,0 +1,7 @@
+--- rfc2616.orig	2013-04-13 07:48:48.487942136 -0400
++++ rfc2616.txt	2013-04-14 17:04:35.797565766 -0400
+@@ -1265,2 +1265,2 @@
+-   gzip An encoding format produced by the file compression program
+-        "gzip" (GNU zip) as described in RFC 1952 [25]. This format is a
++   gzip
++        An encoding format produced by the file compression program "gzip" (GNU zip) as described in RFC 1952 [25]. This format is a
