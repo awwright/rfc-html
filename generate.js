@@ -194,24 +194,44 @@ function skipWS(i){
 
 function parseDl(start){
 	var i = start;
-	console.log('<dl id="line-'+start+'">');
+	console.log('<dl>');
 	var dtIndent = 3;
 	if(config.line[i] && config.line[i].dtIndent){
 		dtIndent = parseInt(config.line[i].dtIndent);
 	}
+	var dtPattern = /^(\S+ ?)+/;
+	if(config.line[i] && config.line[i].dtPattern){
+		dtPattern = new RegExp(config.line[i].dtPattern);
+	}
 	while(1){
-		var dtline = peekLine(i);
-		if(!dtline || !dtline.line.match(/^ {3}\S/)) break;
-		var j = dtline.i+1;
+		if(config.line[i] && config.line[i].format && config.line[i].format!=='dl') break;
+		var dtblock = nextBlock(i);
+		if(dtblock.indent < dtIndent) break;
+		// Split the dt from the dd at the first sequence of two consecutive whitespaces (which includes newlines)
+		var dtm = dtblock.trim[0].match(dtPattern);
+		if(!dtm) break;
+		var dttext = dtm[0];
+		var ddtext = dtblock.trim[0].substring(dttext.length);
+		if(dtblock.trim[1]){
+			var indent = dtblock.trim[1].match(/^\s+/);
+			if(!indent) break;
+			for(var j=1; j<dtblock.trim.length; j++){
+				ddtext += '\n' + dtblock.trim[j].replace(indent[0], '');
+			}
+		}
 		var dd = [];
+		if(ddtext) dd.push(ddtext);
+		// Handle additional paragraphs
+		var j = dtblock.i;
 		while(1){
+			if(config.line[j] && config.line[j].format && config.line[j].format!=='dl') break;
 			var block = nextBlock(j);
-			if(block.indent < 3+dtIndent) break;
+			if(block.indent <= dtblock.indent) break;
 			dd.push(block.trim.join('\n'));
 			j = block.i;
 		}
 		if(!dd.length) break;
-		console.log('<dt>'+escapeHTML(dtline.line)+'</dt>');
+		console.log('<dt id="line-'+dtblock.start+'">'+escapeHTML(dttext)+'</dt>');
 		console.log('<dd>\n'+dd.map(function(v){return '<p>'+formatBody(v)+'</p>\n';}).join('')+'</dd>');
 		i = skipWS(j).i;
 	}
@@ -289,7 +309,7 @@ function parseOl(start){
 
 function parseABNF(i){
 	while(1){
-		if(config.line[i] && config.line[i].format && config.line[i].format !=='abnf')  return {i:i};
+		if(config.line[i] && config.line[i].format && config.line[i].format !=='abnf') return {i:i};
 		var block = nextBlock(i);
 		// FIXME this line can cause an infinite loop, if the pattern isn't matched
 		if(!block.trim[0].match(/^(\S+)( *)=(.*)$/)) break;
