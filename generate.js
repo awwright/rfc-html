@@ -212,7 +212,7 @@ function parseDl(start){
 		}
 		if(!dd.length) break;
 		console.log('<dt>'+escapeHTML(dtline.line)+'</dt>');
-		console.log('<dd>\n'+dd.map(function(v){return '<p>'+escapeHTML(v)+'</p>\n';}).join('')+'</dd>');
+		console.log('<dd>\n'+dd.map(function(v){return '<p>'+formatBody(v)+'</p>\n';}).join('')+'</dd>');
 		i = skipWS(j).i;
 	}
 	console.log('</dl>');
@@ -236,7 +236,7 @@ function parseUl(start){
 			lis.push(line.join('\n'));
 		}
 		lis.forEach(function(v){
-			var p = (lis.length===1)?('<p>'+escapeHTML(v)+'\n</p>'):escapeHTML(v);
+			var p = (lis.length===1)?('<p>'+formatBody(v)+'\n</p>'):escapeHTML(v);
 			console.log('<li id="line-'+i+'">\n'+p+'</li>');
 		});
 		i = skipWS(block.i).i;
@@ -257,7 +257,7 @@ function parseTOC(start){
 			var sname = 'sec-'+section.join('.');
 			console.log('<li><a href="#'+sname+'">'+escapeHTML(m[2])+'</a> '+escapeHTML(m[4])+'</li>');
 		}else{
-			console.log('<li>'+escapeHTML(m[4])+'</li>');
+			console.log('<li>'+formatBody(m[4])+'</li>');
 		}
 	}
 	console.log('</ol>');
@@ -280,7 +280,7 @@ function parseOl(start){
 		if(!block || (typeof block.trim[0])!='string') break;
 		var m = block.trim[0].match(pattern);
 		if(!m) break;
-		console.log('<li><p>'+escapeHTML(block.trim.join('\n').substr(m[0].length).trim())+'</p></li>');
+		console.log('<li><p>'+formatBody(block.trim.join('\n').substr(m[0].length).trim())+'</p></li>');
 		i = skipWS(block.i).i;
 	}
 	console.log('</ol>');
@@ -311,19 +311,61 @@ function parseABNF(i){
 	return {i:i}
 }
 
+function formatBody(text){
+	if(text.match(/In particular, it notes/)) debugger;
+	if(config.xmlentities){
+		text = text.replace(/\&\#x([0-9a-f]+)\;/ig, function(a, b){ return String.fromCharCode(parseInt(b, 16)); });
+		text = text.replace(/&amp;/ig, '&');
+	}
+	var html = escapeHTML(text);
+	if(1){
+		html = html.replace(/(\[([\w\d\-:]+)\])/ig, function(a, b, c){return '[<a href="#bib-'+c+'" class="bib">'+c+'</a>]';});
+	}
+	if(1){
+		// [^] matches any character including newlines
+		html = html.replace(/&lt;(http:\/\/[^]+)&gt;/gi, function(a, b){
+			b = b.replace(/-\n\s+/g, '').replace(/\s+/g, '');
+			return '&lt;<a href="'+b+'">'+b+'</a>&gt;';
+		});
+	}
+	return html;
+}
+
+
 function parseP(i, indent){
 	while(1){
 		var block = nextBlock(i);
 		if(block.indent!==indent) break;
 		if(config.line[block.start] && config.line[block.start].format && config.line[block.start].format!=='p') return {i:block.start};
-		var html = block.trim.join('\n');
-		if(config.xmlentities){
-			html = html.replace(/\&\#x([0-9a-f]+)\;/ig, function(a, b){ return String.fromCharCode(parseInt(b, 16)); });
-			html = html.replace(/&amp;/ig, '&');
-		}
-		console.log('<p id="line-'+block.start+'">'+escapeHTML(html)+'\n</p>');
+		var html = formatBody(block.trim.join('\n'));
+		console.log('<p id="line-'+block.start+'">'+html+'\n</p>');
 		i = skipWS(block.i).i;
 	}
+	return {i:i}
+}
+
+function parseBib(i, indent){
+	console.log('<dl>');
+	while(1){
+		var block = nextBlock(i);
+		if(block.indent!==indent) break;
+		if(config.line[block.start] && config.line[block.start].format && config.line[block.start].format!=='bib') return {i:block.start};
+		var text = block.trim.join('\n');
+		var m = text.match(/^\[([\w\d\-:]+)\]/);
+		if(m){
+			console.log('<dt id="bib-'+m[1]+'">'+m[0]+'</dt>');
+			var body = formatBody(text.substring(m[0].length));
+			body = body.replace(/(RFC ?(\d+))/ig, function(a, b, c){
+				return '<a href="'+c+'">'+a+'</a>';
+			});
+			console.log('<dd>'+body+'</dd>');
+		}else{
+			var body = formatBody(text);
+			console.log('<p id="line-'+block.start+'">'+body+'\n</p>');
+		}
+		i = skipWS(block.i).i;
+	}
+	console.log('</dl>');
 	return {i:i}
 }
 
@@ -333,7 +375,8 @@ function parseNote(i, indent){
 		var block = nextBlock(i);
 		if(block.indent!==indent) break;
 		i = skipWS(block.i).i;
-		console.log('<p>'+escapeHTML(block.trim.join('\n')).replace(/(Notes?:|Warning:)/i,'<span class="nh">$1</span>')+'\n</p>');
+		var html = formatBody(block.trim.join('\n'));
+		console.log('<p>'+html.replace(/(Notes?:|Warning:)/i,'<span class="nh">$1</span>')+'\n</p>');
 	}
 	console.log('</div>');
 	return {i:i}
@@ -370,6 +413,10 @@ while(i<lines.length){
 			case 'p':
 				var block = nextBlock(i);
 				i = parseP(block.start, block.indent).i;
+				continue;
+			case 'bib':
+				var block = nextBlock(i);
+				i = parseBib(block.start, block.indent).i;
 				continue;
 			case 'note':
 				var block = nextBlock(i);
