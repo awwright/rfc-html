@@ -37,10 +37,14 @@ confLines.forEach(function(l){
 		var r = k.match(/^(\d+)-(\d+)$/);
 		if(r){
 			for(var j=parseInt(r[1]), len=parseInt(r[2]); j<=len; j++){
-				if(!c[j]) c[j]=c[k];
+				if(!c[j]) c[j]=Object.create(c[k]);
 			}
 		}
 		c = c[k];
+	}
+	try{
+		v = JSON.parse(v);
+	}catch(e){
 	}
 	c[n[i]] = v;
 });

@@ -23,11 +23,26 @@ Then, generate their HTML files:
 ## Configuration file format
 
 The .conf files annotate the .txt files with metadata. They can be used to imbue the RFC with all sorts of semantic information.
+
+The file is a newline-seperated list of configuration directives, in key=value format. The key is a property path, seperated by a period. The value is a JSON value or any string.
+
 For instance, declaring a portion to be a definition list or a table, or ASCII art, etc.
 
     line.64.format = toc
 
 This declares that the section which starts on line 64 is a Table of Contents.
+
+The formatters are:
+
+ * toc (Table of Contents)
+ * dl (Definition list)
+ * abnf (an ABNF grammar definition, a type of definition list)
+ * ul (unordered list)
+ * ol (ordered list)
+ * art (ASCII art)
+ * table (An ASCII art table)
+ * p (Standard paragraph)
+ * note (An aside/note paragraph)
 
 Normally the formatter can make pretty good guesses as to which section is what type. Lines without any indenting are headings, lines with three spaces indent are paragraphs.
 
