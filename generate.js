@@ -26,14 +26,19 @@ var arg;
 while(typeof (arg=args.shift()) == 'string'){
 	var n = arg.split('=',1)[0];
 	var v = n.substring(n.length);
+	if(n=='--') break;
 	switch(n){
 		case '--page-numbers': pageNumbers=true; break;
 		case '--no-page-numbers': pageNumbers=false; break;
 		case '--root': rootTag=v; break;
+		default:
+			if(n.slice(0,2)=='--'){
+				console.error('Unknown argument '+arg);
+				continue;
+			}
+			files.push(arg);
+			break;
 	}
-	if(n=='--') break;
-	if(n.slice(0,2)=='--'){ console.error('Unknown argument '+arg); continue; }
-	files.push(arg);
 }
 while(typeof (arg=args.shift()) == 'string'){
 	files.push(arg);
@@ -211,7 +216,7 @@ function parseDl(start){
 		i = skipWS(j).i;
 	}
 	console.log('</dl>');
-	if(i==start) throw new Error('DL unhandled');
+	if(i==start) throw new Error('DL unhandled on line '+i);
 	return {i:i}
 }
 
