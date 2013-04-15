@@ -289,7 +289,7 @@ function parseP(i, indent){
 			html = html.replace(/\&\#x([0-9a-f]+)\;/ig, function(a, b){ return String.fromCharCode(parseInt(b, 16)); });
 			html = html.replace(/&amp;/ig, '&');
 		}
-		console.log('<p id="line-'+block.start+'">'+html+'\n</p>');
+		console.log('<p id="line-'+block.start+'">'+escapeHTML(html)+'\n</p>');
 		i = skipWS(block.i).i;
 	}
 	return {i:i}
