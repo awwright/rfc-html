@@ -17,10 +17,31 @@ function escapeHTMLAttr(text){
 }
 var xmlns = 'http://www.w3.org/1999/xhtml';
 
-var filename = process.argv[2];
+var pageNumbers = false;
+var rootTag = 'html';
+var files = [];
 
-var srcdata = fs.readFileSync(filename, 'utf8');
-var confLines = fs.readFileSync(filename.replace(/\.txt$/, '.conf'), 'utf8').split('\n');
+var args = process.argv.slice(2);
+var arg;
+while(typeof (arg=args.shift()) == 'string'){
+	var n = arg.split('=',1)[0];
+	var v = n.substring(n.length);
+	switch(n){
+		case '--page-numbers': pageNumbers=true; break;
+		case '--no-page-numbers': pageNumbers=false; break;
+		case '--root': rootTag=v; break;
+	}
+	if(n=='--') break;
+	if(n.slice(0,2)=='--'){ console.error('Unknown argument '+arg); continue; }
+	files.push(arg);
+}
+while(typeof (arg=args.shift()) == 'string'){
+	files.push(arg);
+}
+
+if(!files.length){ console.error('No input files listed.'); return; }
+var srcdata = fs.readFileSync(files[0], 'utf8');
+var confLines = fs.readFileSync(files[0].replace(/\.txt$/, '.conf'), 'utf8').split('\n');
 var lines = srcdata.split(/\n/);
 
 // Parse attached config/markup file
@@ -73,14 +94,16 @@ function parseHeader(){
 	i++;
 	while(lines[i].length==0) i++;
 
-	console.log('<?xml version="1.0" encoding="UTF-8" ?>');
-	console.log('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">');
-	console.log('<html xmlns="'+xmlns+'">');
-	console.log('<head>');
-	console.log('<title>'+escapeHTML(title)+'</title>');
-	console.log('<link href="style.css" type="text/css" rel="stylesheet" />');
-	console.log('</head>');
-	console.log('<body>');
+	if(rootTag=='html'){
+		console.log('<?xml version="1.0" encoding="UTF-8" ?>');
+		console.log('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">');
+		console.log('<html xmlns="'+xmlns+'">');
+		console.log('<head>');
+		console.log('<title>'+escapeHTML(title)+'</title>');
+		console.log('<link href="style.css" type="text/css" rel="stylesheet" />');
+		console.log('</head>');
+		console.log('<body>');
+	}
 	console.log('<h1>'+escapeHTML(title)+'</h1>');
 
 	// Let's print the document information after the title instead of before
@@ -99,7 +122,7 @@ function peekLine(i){
 		var page = lines[i+3] && lines[i+3].match(/\[Page (\d+)\]$/);
 		if(lines[i+0]=='' && lines[i+4]=='\f'){
 			i+=7;
-			console.log('<span class="pagenumber">pp'+page[1]+' @'+i+'</span>');
+			if(pageNumbers) console.log('<span class="pagenumber">pp'+page[1]+' @'+i+'</span>');
 			continue;
 		}
 		if(config.line[i] && config.line[i].continue){
@@ -415,4 +438,6 @@ while(i<lines.length){
 	continue;
 }
 
-console.log('</body></html>');
+if(rootTag=='html'){
+	console.log('</body></html>');
+}
