@@ -220,17 +220,13 @@ function parseList(start, opt){
 		var ddtext = dtblock.trim[0].substring(dttext.length);
 		var j = dtblock.i;
 		var p = true;
-		console.error(dtblock.trim);
 		if(dtblock.trim[1]){
-			console.error('trim[1] go');
 			for(var k=1; k<dtblock.trim.length; k++){
-				console.error('trim['+k+'] test');
 				if(!dtblock.trim[k].match(/^\s/)){
 					j = dtblock.lineNumbers[k];
 					p = false;
 					break;
 				}
-				console.error('trim['+k+'] pass');
 				ddtext += '\n' + dtblock.trim[k].replace(/^\s+/, '');
 			}
 			
@@ -340,7 +336,6 @@ function parseABNF(i){
 }
 
 function formatBody(text){
-	if(text.match(/In particular, it notes/)) debugger;
 	if(config.xmlentities){
 		text = text.replace(/\&\#x([0-9a-f]+)\;/ig, function(a, b){ return String.fromCharCode(parseInt(b, 16)); });
 		text = text.replace(/&amp;/ig, '&');
