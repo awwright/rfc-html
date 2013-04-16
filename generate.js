@@ -18,6 +18,7 @@ function escapeHTMLAttr(text){
 var xmlns = 'http://www.w3.org/1999/xhtml';
 
 var pageNumbers = false;
+var debug = false;
 var rootTag = 'html';
 var files = [];
 
@@ -30,6 +31,8 @@ while(typeof (arg=args.shift()) == 'string'){
 	switch(n){
 		case '--page-numbers': pageNumbers=true; break;
 		case '--no-page-numbers': pageNumbers=false; break;
+		case '--debug': debug=true; break;
+		case '--no-debug': debug=false; break;
 		case '--root': rootTag=v; break;
 		default:
 			if(n.slice(0,2)=='--'){
@@ -137,6 +140,12 @@ function peekLine(i){
 		break;
 	}
 	var line = lines[i] || '';
+	if(debug) console.error(i+' '+require('util').inspect(line));
+	if(config.line[i] && typeof config.line[i].replace=='string'){
+		var pattern = new RegExp(config.line[i].replace, config.line[i].regexFlags);
+		var replacement = config.line[i].replacement || '';
+		line = line.replace(pattern, replacement);
+	}
 	if(config.line[i] && config.line[i].unindent){
 		var indent = parseInt(config.line[i].unindent);
 		while(indent>0 && line[0]==' '){
