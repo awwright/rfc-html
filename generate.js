@@ -165,6 +165,7 @@ function nextBlock(i){
 	var start = i;
 	var line;
 	var blockLines = [];
+	var blockLineNumbers = [];
 	var indent = 1/0;
 	while(1){
 		line=peekLine(i);
@@ -172,6 +173,7 @@ function nextBlock(i){
 		i = line.i+1;
 		if(!line.line.length) break;
 		blockLines.push(line.line);
+		blockLineNumbers.push(line.i);
 		var m = line.line.match(/^( *)/);
 		if(m[0].length < indent){
 			indent = m[0].length;
@@ -180,7 +182,7 @@ function nextBlock(i){
 	//if(!blockLines.length) return undefined;
 	var trimLines = blockLines.map(function(v){return v.substr(indent);});
 	//console.error(start, trimLines);
-	return {indent:indent, lines:blockLines, trim:trimLines, start:start, i:i};
+	return {indent:indent, lines:blockLines, trim:trimLines, lineNumbers:blockLineNumbers, start:start, i:i};
 }
 
 function skipWS(i){
@@ -192,77 +194,106 @@ function skipWS(i){
 	return {i:i};
 }
 
-function parseDl(start){
+function parseList(start, opt){
 	var i = start;
-	console.log('<dl>');
-	var dtIndent = 3;
+	var dtIndent = opt.labelIndent;
 	if(config.line[i] && config.line[i].dtIndent){
 		dtIndent = parseInt(config.line[i].dtIndent);
 	}
-	var dtPattern = /^(\S+ ?)+/;
-	if(config.line[i] && config.line[i].dtPattern){
-		dtPattern = new RegExp(config.line[i].dtPattern);
+	var labelPattern = opt.labelPattern;
+	if(config.line[i] && config.line[i].labelPattern){
+		labelPattern = new RegExp(config.line[i].labelPattern, config.line[i].labelPatternFlags);
 	}
+	var className = opt.className;
+	if(config.line[i] && config.line[i].className){
+		className = config.line[i].className;
+	}
+	console.log('<'+opt.tag+(className?(' class="'+className+'"'):'')+'>');
 	while(1){
-		if(config.line[i] && config.line[i].format && config.line[i].format!=='dl') break;
+		if(config.line[i] && config.line[i].format && config.line[i].format!==opt.name) break;
 		var dtblock = nextBlock(i);
 		if(dtblock.indent < dtIndent) break;
 		// Split the dt from the dd at the first sequence of two consecutive whitespaces (which includes newlines)
-		var dtm = dtblock.trim[0].match(dtPattern);
+		var dtm = dtblock.trim[0].match(labelPattern);
 		if(!dtm) break;
 		var dttext = dtm[0];
 		var ddtext = dtblock.trim[0].substring(dttext.length);
+		var j = dtblock.i;
+		var p = true;
+		console.error(dtblock.trim);
 		if(dtblock.trim[1]){
-			var indent = dtblock.trim[1].match(/^\s+/);
-			if(!indent) break;
-			for(var j=1; j<dtblock.trim.length; j++){
-				ddtext += '\n' + dtblock.trim[j].replace(indent[0], '');
+			console.error('trim[1] go');
+			for(var k=1; k<dtblock.trim.length; k++){
+				console.error('trim['+k+'] test');
+				if(!dtblock.trim[k].match(/^\s/)){
+					j = dtblock.lineNumbers[k];
+					p = false;
+					break;
+				}
+				console.error('trim['+k+'] pass');
+				ddtext += '\n' + dtblock.trim[k].replace(/^\s+/, '');
 			}
+			
 		}
 		var dd = [];
 		if(ddtext) dd.push(ddtext);
 		// Handle additional paragraphs
-		var j = dtblock.i;
 		while(1){
-			if(config.line[j] && config.line[j].format && config.line[j].format!=='dl') break;
+			if(config.line[j] && config.line[j].format && config.line[j].format!==opt.name) break;
 			var block = nextBlock(j);
+			if(!block.trim.length) break;
 			if(block.indent <= dtblock.indent) break;
 			dd.push(block.trim.join('\n'));
 			j = block.i;
 		}
 		if(!dd.length) break;
-		console.log('<dt id="line-'+dtblock.start+'">'+escapeHTML(dttext)+'</dt>');
-		console.log('<dd>\n'+dd.map(function(v){return '<p>'+formatBody(v)+'</p>\n';}).join('')+'</dd>');
+		if(opt.labelTag){
+			console.log('<'+opt.labelTag+' id="line-'+dtblock.start+'">'+escapeHTML(dttext)+'</'+opt.labelTag+'>');
+		}
+		if(p){
+			console.log('<'+opt.itemTag+'>\n'+dd.map(function(v){return '<p>'+formatBody(v)+'</p>\n';}).join('')+'</'+opt.itemTag+'>');
+		}else{
+			console.log('<'+opt.itemTag+'>\n'+dd.map(function(v){return formatBody(v)+'\n';}).join('')+'</'+opt.itemTag+'>');
+		}
 		i = skipWS(j).i;
 	}
-	console.log('</dl>');
-	if(i==start) throw new Error('DL unhandled on line '+i);
+	console.log('</'+opt.tag+'>');
+	if(i==start) throw new Error(opt.tag+' block unhandled on line '+i);
 	return {i:i}
 }
 
-function parseUl(start){
-	var i = start;
-	console.log('<ul>');
-	while(1){
-		var block = nextBlock(i);
-		if(!block || block.trim[0]===undefined || !block.trim[0].match(/^[-o*]\s+/)) break;
+function parseDl(start){
+	var opts =
+		{ name: 'dl'
+		, tag: 'dl'
+		, labelTag: 'dt'
+		, labelPattern: /^(\S+ ?)+/
+		, labelIndent: 3
+		, itemTag: 'dd'
+		};
+	return parseList(start, opts);
+}
 
-		var lis = [];
-		for(var j=0; j<block.trim.length; j++){
-			var line = [block.trim[j].substr(2)];
-			while(block.trim[j+1] && block.trim[j+1].match(/^\s/)){
-				line.push(block.trim[++j]);
-			}
-			lis.push(line.join('\n'));
-		}
-		lis.forEach(function(v){
-			var p = (lis.length===1)?('<p>'+formatBody(v)+'\n</p>'):escapeHTML(v);
-			console.log('<li id="line-'+i+'">\n'+p+'</li>');
-		});
-		i = skipWS(block.i).i;
-	}
-	console.log('</ul>');
-	return {i:i}
+function parseUl(start){
+	var opts =
+		{ name: 'ul'
+		, tag: 'ul'
+		, labelPattern: /^\(?[-o*\.]\)?\s+/
+		, labelIndent: 3
+		, itemTag: 'li'
+		};
+	return parseList(start, opts);
+}
+
+function parseOl(start){
+	var opts =
+		{ name: 'ol'
+		, tag: 'ol'
+		, labelPattern: /^\(?(\d+)\.?\)?\s+/
+		, labelIndent: 3
+		, itemTag: 'li'
+		};
+	return parseList(start, opts);
 }
 
 function parseTOC(start){
@@ -282,29 +313,6 @@ function parseTOC(start){
 	}
 	console.log('</ol>');
 	return {i:skipWS(block.i).i}
-}
-
-function parseOl(start){
-	var i = start;
-	var className;
-	var pattern = /^\d+\.?\s+/;
-	if(config.line[i] && config.line[i].className){
-		className = config.line[i].className;
-	}
-	if(config.line[i] && config.line[i].pattern){
-		pattern = new RegExp(config.line[i].pattern, config.line[i].patternflags);
-	}
-	console.log('<ol id="line-'+start+'"'+(className?(' class="'+className+'"'):'')+'>');
-	while(1){
-		var block = nextBlock(i);
-		if(!block || (typeof block.trim[0])!='string') break;
-		var m = block.trim[0].match(pattern);
-		if(!m) break;
-		console.log('<li><p>'+formatBody(block.trim.join('\n').substr(m[0].length).trim())+'</p></li>');
-		i = skipWS(block.i).i;
-	}
-	console.log('</ol>');
-	return {i:i}
 }
 
 function parseABNF(i){
