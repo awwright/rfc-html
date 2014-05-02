@@ -49,35 +49,12 @@ while(typeof (arg=args.shift()) == 'string'){
 
 if(!files.length){ console.error('No input files listed.'); return; }
 var srcdata = fs.readFileSync(files[0], 'utf8');
-var confLines = fs.readFileSync(files[0].replace(/\.txt$/, '.conf'), 'utf8').split('\n');
+var configData = fs.readFileSync(files[0].replace(/\.txt$/, '.conf'), 'utf8');
 var lines = srcdata.split(/\n/);
 
 // Parse attached config/markup file
-var config = {line: {}};
-confLines.forEach(function(l){
-	if(!l) return;
-	var m = l.split('=',1);
-	var v = l.substring(m[0].length+1).trim();
-	var n = m[0].trim().split('.');
-	var c = config;
-	for(var i=0; i<n.length-1; i++){
-		var k = n[i];
-		if(!c[k]) c[k]={};
-		var r = k.match(/^(\d+)-(\d+)$/);
-		if(r){
-			for(var j=parseInt(r[1]), len=parseInt(r[2]); j<=len; j++){
-				if(!c[j]) c[j]=Object.create(c[k]);
-			}
-		}
-		c = c[k];
-	}
-	try{
-		v = JSON.parse(v);
-	}catch(e){
-	}
-	c[n[i]] = v;
-});
-console.error(config);
+var parseConfig = require('./lib/parseconfig.js').parseConfig;
+var config = parseConfig(configData);
 
 
 function parseHeader(){
