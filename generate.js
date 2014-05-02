@@ -444,7 +444,7 @@ while(i<lines.length){
 
 	if(block.indent===0){
 		var text = block.trim.join('').trim();
-		var headnumber = text.match(/^([0-9\.]+) (.*)/);
+		var headnumber = text.match(/^([0-9A-Z\.]+) (.*)/);
 		if(headnumber && headnumber[1]){
 			var levels = headnumber[1].split('.').filter(function(v){return !!v});
 			var sname = 'sec-'+levels.join('.');
