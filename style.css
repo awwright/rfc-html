@@ -4,7 +4,7 @@ html {
 
 body {
 	margin: 0 auto;
-	max-width: 800px;
+	max-width: 700px;
 	font-family: Cambria, Palatino Linotype, Palatino, Liberation Serif, serif;
 	font-size: 17px;
 	line-height: 135%;
@@ -105,9 +105,16 @@ ul > li {
 ol.lower-alpha > li {
 	list-style-type: lower-alpha;
 }
+dt {
+	font-weight: bold;
+}
+dd {
+}
 
 span.pagenumber {
 	position: absolute;
 	right: 0;
+	border: solid 1px black;
+	padding: 0.1em;
 }
 

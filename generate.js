@@ -215,7 +215,6 @@ function parseList(start, opt){
 				}
 				ddtext += '\n' + dtblock.trim[k].replace(/^\s+/, '');
 			}
-			
 		}
 		var dd = [];
 		if(ddtext) dd.push(ddtext);
@@ -229,9 +228,6 @@ function parseList(start, opt){
 			j = block.i;
 		}
 		if(!dd.length) break;
-		if(opt.labelTag){
-			console.log('<'+opt.labelTag+' id="line-'+dtblock.start+'">'+escapeHTML(dttext)+'</'+opt.labelTag+'>');
-		}
 		if(p){
 			console.log('<'+opt.itemTag+'>\n'+dd.map(function(v){return '<p>'+formatBody(v)+'</p>\n';}).join('')+'</'+opt.itemTag+'>');
 		}else{
@@ -245,15 +241,50 @@ function parseList(start, opt){
 }
 
 function parseDl(start){
-	var opts =
-		{ name: 'dl'
-		, tag: 'dl'
-		, labelTag: 'dt'
-		, labelPattern: /^(\S+ ?)+/
-		, labelIndent: 3
-		, itemTag: 'dd'
-		};
-	return parseList(start, opts);
+	var i = start;
+	var dtIndent = 3;
+	var labelPattern = /^(\S+ ?)+/;
+	var className = '';
+	if(config.line[i] && config.line[i].dtIndent){
+		dtIndent = parseInt(config.line[i].dtIndent);
+	}
+	if(config.line[i] && config.line[i].labelPattern){
+		labelPattern = new RegExp(config.line[i].labelPattern, config.line[i].labelPatternFlags);
+	}
+	if(config.line[i] && config.line[i].className){
+		className = config.line[i].className;
+	}
+	// Two kinds of definition lists, in-line definitions and block definitions
+	// Test which one this is
+	var dlblock = nextBlock(i);
+
+	console.log('<dl'+(className?(' class="'+className+'"'):'')+'>');
+	// Iterate through each item...
+	while(1){
+		if(config.line[i] && config.line[i].format && config.line[i].format!=='dl') break;
+		var dtblock = nextBlock(i);
+		if(dtblock.indent < dtIndent) break;
+		if(dtblock.trim[1] && dtblock.trim[1].match(/^\S/)) break;
+		var inlineDefinition = dtblock.trim[0].match(/\s\s/) || (dtblock.trim[1] && !dtblock.trim[1].match(/^ {6}/));
+		if(inlineDefinition){
+			var dtmatch = dtblock.trim[0].split('  ',1)[0];
+			var ddpart = dtblock.trim[0].substring(dtmatch.length+2);
+			console.log('<dt>'+escapeHTML(dtmatch)+'</dt>');
+			console.log('<dd>'+ddpart+dtblock.trim.slice(1).join("\n")+'</dd>');
+		}else{
+			if(!dtblock.trim[1] || !dtblock.trim[1].match(/^ {3}/)) break;
+			console.log('<dt>'+escapeHTML(dtblock.trim[0])+'</dt>');
+			console.log('<dd>');
+			i = parseBody(dtblock.lineNumbers[1], dtblock.indent+3).i;
+			console.log('</dd>');
+		}
+
+		if(!dtblock) break;
+		i = skipWS(dtblock.i).i;
+	}
+	console.log('</dl>');
+	if(i==start) throw new Error('dl block unhandled on line '+i);
+	return {i:i};
 }
 
 function parseUl(start){
@@ -342,15 +373,11 @@ function formatBody(text){
 
 
 function parseP(i, indent){
-	while(1){
-		var block = nextBlock(i);
-		if(block.indent!==indent) break;
-		if(config.line[block.start] && config.line[block.start].format && config.line[block.start].format!=='p') return {i:block.start};
-		var html = formatBody(block.trim.join('\n'));
-		console.log('<p id="line-'+block.start+'">'+html+'\n</p>');
-		i = skipWS(block.i).i;
-	}
-	return {i:i}
+	var block = nextBlock(i);
+	var html = formatBody(block.trim.join('\n'));
+	console.log('<p id="line-'+block.start+'">'+html+'\n</p>');
+	i = skipWS(block.i).i;
+	return {i:i};
 }
 
 function parseBib(i, indent){
@@ -393,110 +420,124 @@ function parseNote(i, indent){
 
 // Parse the header
 var i = parseHeader().i;
+parseBody(i);
 
-// Now, parse body
-while(i<lines.length){
-	if(config.line[i] && config.line[i].format){
-		switch(config.line[i].format){
-			case 'toc':
-				i = parseTOC(i).i;
-				continue;
-			case 'dl':
-				i = parseDl(i).i;
-				continue;
-			case 'ul':
-				i = parseUl(i).i;
-				continue;
-			case 'ol':
-				i = parseOl(i).i;
-				continue;
-			case 'art':
-			case 'table':
-				var block = nextBlock(i);
-				console.log('<pre id="line-'+i+'">\n'+escapeHTML(block.trim.join('\n'))+'\n</pre>');
-				i = block.i;
-				continue;
-			case 'abnf':
-				i = parseABNF(i).i;
-				continue;
-			case 'p':
-				var block = nextBlock(i);
-				i = parseP(block.start, block.indent).i;
-				continue;
-			case 'bib':
-				var block = nextBlock(i);
-				i = parseBib(block.start, block.indent).i;
-				continue;
-			case 'note':
-				var block = nextBlock(i);
-				i = parseNote(block.start, block.indent).i;
-				continue;
-			default:
-				var block = nextBlock(i);
-				console.error('Unknown handler %s for line %d', config.line[i].format, block.start);
-				break;
+function parseBody(start, indent){
+	var i = start;
+	indent = indent || 0;
+
+	// Now, parse body
+	while(i<lines.length){
+		if(config.line[i] && config.line[i].format){
+			switch(config.line[i].format){
+				case 'toc':
+					i = parseTOC(i).i;
+					continue;
+				case 'dl':
+					i = parseDl(i).i;
+					continue;
+				case 'ul':
+					i = parseUl(i).i;
+					continue;
+				case 'ol':
+					i = parseOl(i).i;
+					continue;
+				case 'art':
+				case 'table':
+					var block = nextBlock(i);
+					console.log('<pre id="line-'+i+'">\n'+escapeHTML(block.trim.join('\n'))+'\n</pre>');
+					i = block.i;
+					continue;
+				case 'abnf':
+					i = parseABNF(i).i;
+					continue;
+				case 'p':
+					var block = nextBlock(i);
+					i = parseP(block.start, block.indent).i;
+					continue;
+				case 'bib':
+					var block = nextBlock(i);
+					i = parseBib(block.start, block.indent).i;
+					continue;
+				case 'note':
+					var block = nextBlock(i);
+					i = parseNote(block.start, block.indent).i;
+					continue;
+				default:
+					var block = nextBlock(i);
+					console.error('Unknown handler %s for line %d', config.line[i].format, block.start);
+					break;
+			}
 		}
-	}
 
-	var block = nextBlock(i);
-	if(!block) break;
-	//console.error(block);
+		var block = nextBlock(i);
+		if(!block) break;
+		if(block.indent < indent) break;
+		//console.error(block);
 
-	if(block.indent===0){
-		var text = block.trim.join('').trim();
-		var headnumber = text.match(/^([0-9A-Z\.]+) (.*)/);
-		if(headnumber && headnumber[1]){
-			var levels = headnumber[1].split('.').filter(function(v){return !!v});
-			var sname = 'sec-'+levels.join('.');
-			var level = (levels && levels.length && (levels.length+1)) || 2;
-			console.log('<h'+level+' id="'+sname+'" class="line-'+block.start+'"><span class="secnum">'+escapeHTML(headnumber[1])+'</span> '+escapeHTML(headnumber[2])+'</h'+level+'>');
-		}else{
-			console.log('<h2 class="line-'+block.start+'">'+escapeHTML(block.lines[0].trim())+'</h2>');
+		// Headings will only ever be on the first column, regardless of `indent` setting
+		if(block.indent===0){
+			// This is a header
+			var text = block.trim.join('').trim();
+			var headnumber = text.match(/^([0-9A-Z\.]+) (.*)/);
+			if(headnumber && headnumber[1]){
+				var levels = headnumber[1].split('.').filter(function(v){return !!v});
+				var sname = 'sec-'+levels.join('.');
+				var level = (levels && levels.length && (levels.length+1)) || 2;
+				console.log('<h'+level+' id="'+sname+'" class="line-'+block.start+'"><span class="secnum">'+escapeHTML(headnumber[1])+'</span> '+escapeHTML(headnumber[2])+'</h'+level+'>');
+			}else{
+				console.log('<h2 class="line-'+block.start+'">'+escapeHTML(block.lines[0].trim())+'</h2>');
+			}
+			i = block.i;
+			continue;
+		}else if(block.indent===indent){
+			console.log(block.trim.join("\n"));
+			break;
+		}
+
+		// Unordered lists
+		if(block.indent>=2+indent && block.trim[0] && block.trim[0].match(/^[-o*]\s+/)){
+			i = parseUl(block.start).i;
+			if(block.start!=i) continue;
+		}
+
+		// Ordered lists
+		if(block.indent>=2+indent && block.trim[0] && block.trim[0].match(/^\d+\.?\s+/)){
+			i = parseOl(block.start).i;
+			if(block.start!=i) continue;
+		}
+
+		// Definition lists
+		if(block.indent===3+indent && block.trim[0] && block.trim[1] && block.trim[1].match(/^   /)){
+			i = parseDl(block.start).i;
+			if(block.start!=i) continue;
+		}
+
+		// Note asides
+		if(block.indent>3+indent && block.trim[0] && block.trim[0].match(/^Notes?:/i)){
+			i = parseNote(block.start, block.indent).i;
+			continue;
+		}
+
+		// ABNF blocks
+		if(block.indent>3+indent && block.trim[0] && block.trim[0].match(/^(\S+)( +)=(.*)$/)){
+			i = parseABNF(block.start).i;
+			continue;
+		}
+
+		if(block.indent===3+indent){
+			i = parseP(block.start, block.indent).i;
+			continue;
+		}
+
+		if(block.trim.length){
+			console.log('<pre id="line-'+block.start+'">\n'+escapeHTML(block.trim.join('\n'))+'\n</pre>');
 		}
 		i = block.i;
 		continue;
 	}
 
-	// Definition lists
-	if(block.indent===3 && block.trim[1] && block.trim[1].match(/^   \S/)){
-		i = parseDl(block.start).i;
-		if(block.start!=i) continue;
-	}
-
-	// Unordered lists
-	if(block.indent>4 && block.trim[0] && block.trim[0].match(/^[-o*]\s+/)){
-		i = parseUl(block.start).i;
-		if(block.start!=i) continue;
-	}
-
-	// Ordered lists
-	if(block.indent>4 && block.trim[0] && block.trim[0].match(/^\d+\.?\s+/)){
-		i = parseOl(block.start).i;
-		if(block.start!=i) continue;
-	}
-
-	// Note asides
-	if(block.indent>3 && block.trim[0] && block.trim[0].match(/^Notes?:/i)){
-		i = parseNote(block.start, block.indent).i;
-		continue;
-	}
-
-	// ABNF blocks
-	if(block.indent>3 && block.trim[0] && block.trim[0].match(/^(\S+)( +)=(.*)$/)){
-		i = parseABNF(block.start).i;
-		continue;
-	}
-
-	if(block.indent===3){
-		i = parseP(block.start, block.indent).i;
-		continue;
-	}
-
-	if(block.trim.length){
-		console.log('<pre id="line-'+block.start+'">\n'+escapeHTML(block.trim.join('\n'))+'\n</pre>');
-	}
-	i = block.i;
-	continue;
+	return {i:i};
 }
 
 if(rootTag=='html'){
